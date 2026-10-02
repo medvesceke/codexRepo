@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="sl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vnos podatkov</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; }
+    body { margin: 0; padding: 2rem 1rem; background: #f3f6fb; color: #1f2937; }
+    main { max-width: 34rem; margin: 3rem auto; padding: 2rem; background: white;
+      border-radius: 1rem; box-shadow: 0 0.5rem 2rem #1f29371a; }
+    h1 { margin-top: 0; }
+    label { display: block; margin: 1rem 0 0.35rem; font-weight: 600; }
+    input { box-sizing: border-box; width: 100%; padding: 0.75rem; border: 1px solid #9ca3af;
+      border-radius: 0.4rem; font: inherit; }
+    button { margin: 1.5rem 0.5rem 0 0; padding: 0.75rem 1rem; border: 0; border-radius: 0.4rem;
+      background: #2458c6; color: white; font: inherit; font-weight: 600; cursor: pointer; }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    .note { color: #4b5563; font-size: 0.95rem; }
+    #status { min-height: 1.5em; }
+    table { width: 100%; margin-top: 1.5rem; border-collapse: collapse; text-align: left; }
+    th, td { padding: 0.5rem 0.25rem; border-bottom: 1px solid #e5e7eb; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Vnos podatkov</h1>
+    <p class="note">Vnosi ostanejo v tem zavihku. Ko končate, prenesite datoteko <code>data.txt</code>.</p>
+    <form id="contact-form">
+      <label for="ime">Ime</label>
+      <input id="ime" name="ime" autocomplete="given-name" maxlength="100" required>
+      <label for="priimek">Priimek</label>
+      <input id="priimek" name="priimek" autocomplete="family-name" maxlength="100" required>
+      <label for="email">E-pošta</label>
+      <input id="email" name="email" type="email" autocomplete="email" maxlength="254" required>
+      <button type="submit">Dodaj v seznam</button>
+    </form>
+    <p id="status" role="status" aria-live="polite"></p>
+    <table id="entries-table" hidden>
+      <thead><tr><th>Ime</th><th>Priimek</th><th>E-pošta</th></tr></thead>
+      <tbody id="entries"></tbody>
+    </table>
+    <button id="download" type="button" disabled>Prenesi data.txt</button>
+  </main>
+  <script>
+    const form = document.querySelector("#contact-form");
+    const entries = [];
+    const rows = document.querySelector("#entries");
+    const table = document.querySelector("#entries-table");
+    const downloadButton = document.querySelector("#download");
+    const status = document.querySelector("#status");
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      const record = Object.fromEntries(new FormData(form));
+      record.ime = record.ime.trim();
+      record.priimek = record.priimek.trim();
+      record.email = record.email.trim();
+      if (!record.ime || !record.priimek) {
+        status.textContent = "Vnesite ime in priimek.";
+        return;
+      }
+      entries.push(record);
+      const row = document.createElement("tr");
+      for (const value of Object.values(record)) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.append(cell);
+      }
+      rows.append(row);
+      table.hidden = false;
+      downloadButton.disabled = false;
+      status.textContent = "Vnos je dodan. Datoteko lahko prenesete, ko končate.";
+      form.reset();
+      document.querySelector("#ime").focus();
+    });
+
+    function csvCell(value) {
+      return `"${value.replaceAll('"', '""')}"`;
+    }
+
+    downloadButton.addEventListener("click", () => {
+      const lines = [
+        ["ime", "priimek", "email"],
+        ...entries.map(({ ime, priimek, email }) => [ime, priimek, email]),
+      ].map((row) => row.map(csvCell).join(","));
+      const file = new Blob(["\uFEFF", lines.join("\r\n"), "\r\n"], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "data.txt";
+      link.click();
+      URL.revokeObjectURL(url);
+      status.textContent = "Datoteka data.txt je prenesena.";
+    });
+  </script>
+</body>
+</html>
